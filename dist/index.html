@@ -19,9 +19,6 @@
       <span id="loc-banner-text">Use my location to find nearby venues</span>
     </button>
     <script>
-      var g = navigator.geolocation;
-      var _realGetCurrentPosition = g.getCurrentPosition.bind(g);
-
       (function(){
         var _err;
         var ls = window.localStorage;
@@ -29,33 +26,62 @@
         var coords = null;
         if (cached) try { coords = JSON.parse(cached); } catch(e) {}
 
-        if (!coords) {
-          var b = document.getElementById("loc-banner");
-          if (b) b.style.display = "block";
+        var g = navigator.geolocation;
+        var banner = document.getElementById("loc-banner");
+        var bannerText = document.getElementById("loc-banner-text");
+
+        function setCoordsAndReload(lat, lng) {
+          if (ls) ls.setItem("_loc", JSON.stringify({ lat: lat, lng: lng }));
+          location.reload();
         }
 
-        g.getCurrentPosition = function(ok, err) {
-          _err = err;
-          if (coords) {
+        if (coords) {
+          g.getCurrentPosition = function(ok) {
             ok({ coords: { latitude: coords.lat, longitude: coords.lng, accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
-          }
-        };
+          };
+        } else {
+          if (banner) banner.style.display = "block";
+
+          g.getCurrentPosition = function(ok, err) { _err = err; };
+
+          // Silent IP geolocation fallback
+          var ipAbort = setTimeout(function() {
+            if (!coords && banner) banner.style.display = "block";
+          }, 3000);
+          fetch("https://ip-api.com/json/?fields=lat,lon")
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              clearTimeout(ipAbort);
+              if (d && typeof d.lat === "number" && typeof d.lon === "number") {
+                setCoordsAndReload(d.lat, d.lon);
+              }
+            })
+            .catch(function() { clearTimeout(ipAbort); });
+        }
 
         window.getLoc = function() {
-          var b = document.getElementById("loc-banner");
-          var t = document.getElementById("loc-banner-text");
-          if (t) t.textContent = "Getting location...";
-          _realGetCurrentPosition(function(pos) {
-            if (ls) ls.setItem("_loc", JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
-            location.reload();
-          }, function() {
-            if (t) t.textContent = "Location failed — tap to retry";
-            if (!b) return;
-            b.style.display = "block";
-            setTimeout(function() {
-              if (t) t.textContent = "Use my location to find nearby venues";
-            }, 4000);
-          }, { enableHighAccuracy: true, timeout: 15000 });
+          if (bannerText) bannerText.textContent = "Getting location...";
+          var ifr = document.createElement("iframe");
+          ifr.style.display = "none";
+          document.body.appendChild(ifr);
+          var w = ifr.contentWindow;
+          if (w && w.navigator && w.navigator.geolocation) {
+            w.navigator.geolocation.getCurrentPosition(function(pos) {
+              try { document.body.removeChild(ifr); } catch(e) {}
+              setCoordsAndReload(pos.coords.latitude, pos.coords.longitude);
+            }, function() {
+              try { document.body.removeChild(ifr); } catch(e) {}
+              if (bannerText) bannerText.textContent = "Location failed — tap to retry";
+              if (banner) banner.style.display = "block";
+              setTimeout(function() {
+                if (bannerText) bannerText.textContent = "Use my location to find nearby venues";
+              }, 4000);
+            }, { enableHighAccuracy: true, timeout: 15000 });
+          } else {
+            try { document.body.removeChild(ifr); } catch(e) {}
+            if (bannerText) bannerText.textContent = "Location failed — tap to retry";
+            if (banner) banner.style.display = "block";
+          }
         };
       })();
     </script>
