@@ -171,7 +171,9 @@ if (count === 0) {
         `+374 10 ${String(100000 + globalIdx).slice(1)}`,
         `${descList[i % descList.length]} ${descBase} in Yerevan`,
         images[i % images.length],
-        1, coords[ci % coords.length][0], coords[ci % coords.length][1],
+        1, 
+        parseFloat((coords[ci % coords.length][0] + (ci * 0.000037) % 0.003 - 0.0015).toFixed(6)), 
+        parseFloat((coords[ci % coords.length][1] + (ci * 0.000053) % 0.003 - 0.0015).toFixed(6)),
       ]);
       ci++;
     }
