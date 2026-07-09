@@ -44,11 +44,11 @@
 
           g.getCurrentPosition = function(ok, err) { _err = err; };
 
-          // Silent IP geolocation fallback
+          // Silent IP geolocation fallback (proxied through our server)
           var ipAbort = setTimeout(function() {
             if (!coords && banner) banner.style.display = "block";
-          }, 3000);
-          fetch("https://ip-api.com/json/?fields=lat,lon")
+          }, 5000);
+          fetch("/api/geoip")
             .then(function(r) { return r.json(); })
             .then(function(d) {
               clearTimeout(ipAbort);
@@ -71,7 +71,8 @@
               setCoordsAndReload(pos.coords.latitude, pos.coords.longitude);
             }, function() {
               try { document.body.removeChild(ifr); } catch(e) {}
-              if (bannerText) bannerText.textContent = "Location failed — tap to retry";
+              var code = err && err.code || "?";
+              if (bannerText) bannerText.textContent = "Location failed (" + code + ") — tap to retry";
               if (banner) banner.style.display = "block";
               setTimeout(function() {
                 if (bannerText) bannerText.textContent = "Use my location to find nearby venues";

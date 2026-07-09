@@ -255,6 +255,21 @@ app.get("/api/venues/nearby", (req, res) => {
   res.json(rows.slice(0, parseInt(limit)));
 });
 
+app.get("/api/geoip", async (req, res) => {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress;
+  try {
+    const r = await fetch(`http://ip-api.com/json/${ip}?fields=lat,lon`);
+    const d = await r.json();
+    if (d && typeof d.lat === "number" && typeof d.lon === "number") {
+      res.json({ lat: d.lat, lng: d.lon });
+    } else {
+      res.json({ lat: 40.1792, lng: 44.4991 });
+    }
+  } catch {
+    res.json({ lat: 40.1792, lng: 44.4991 });
+  }
+});
+
 app.get("/api/categories", (_req, res) => {
   const stmt = db.prepare("SELECT DISTINCT category FROM venues ORDER BY category ASC");
   const categories = [];
