@@ -39,17 +39,19 @@
         }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
       };
 
-      // Fix category taps on mobile: remove href so browser cant navigate on touchstart
-      new MutationObserver(function(muts) {
-        muts.forEach(function(m) {
-          m.addedNodes.forEach(function(n) {
-            if (n.nodeType === 1) {
-              if (n.matches && n.matches(".cat-btn")) n.removeAttribute("href");
-              if (n.querySelectorAll) n.querySelectorAll(".cat-btn").forEach(function(e) { e.removeAttribute("href"); });
-            }
-          });
-        });
-      }).observe(document.body, { childList: true, subtree: true });
+      // Fix category tabs: intercept taps and reload with category param
+      document.addEventListener("click", function(e) {
+        var btn = e.target.closest(".cat-btn");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var cat = btn.textContent.trim() === "All" ? "" : btn.textContent.trim();
+        var q = new URLSearchParams(location.search);
+        q.delete("_page");
+        if (cat) q.set("category", cat); else q.delete("category");
+        var qs = q.toString();
+        location.href = qs ? "/?" + qs : "/";
+      }, true);
     </script>
   </body>
 </html>
