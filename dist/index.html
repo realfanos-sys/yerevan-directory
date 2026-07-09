@@ -27,7 +27,6 @@
         if (_locCached) {
           var p = _locCached.split(",").map(Number);
           ok({ coords: { latitude: p[0], longitude: p[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
-          history.replaceState(null, "", location.pathname.replace(location.search, ""));
           return;
         }
         document.getElementById("loc-banner").style.display = "block";
@@ -39,7 +38,7 @@
         }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
       };
 
-      // Fix category tabs: intercept taps and reload with category param
+      // Fix category tabs: intercept taps and reload preserving _loc
       document.addEventListener("click", function(e) {
         var btn = e.target.closest(".cat-btn");
         if (!btn) return;
@@ -47,8 +46,10 @@
         e.stopPropagation();
         var cat = btn.textContent.trim() === "All" ? "" : btn.textContent.trim();
         var q = new URLSearchParams(location.search);
+        var loc = q.get("_loc");
         q.delete("_page");
         if (cat) q.set("category", cat); else q.delete("category");
+        if (loc) q.set("_loc", loc); // preserve location
         var qs = q.toString();
         location.href = qs ? "/?" + qs : "/";
       }, true);
