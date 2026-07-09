@@ -228,7 +228,8 @@ app.get("/api/venues", (req, res) => {
     rows.push(stmt.getAsObject());
   }
   stmt.free();
-  res.json({ venues: rows, total });
+  res.set("X-Total-Count", total);
+  res.json(rows);
 });
 
 app.get("/api/venues/nearby", (req, res) => {

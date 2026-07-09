@@ -11,7 +11,7 @@
     <title>Yerevan Directory</title>
     <script type="module" crossorigin src="/assets/index-1rFHcFbm.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bq9i6b3C.css">
-    <style>.cat-btn{touch-action:manipulation;-webkit-touch-callout:none;cursor:pointer}.categories{-webkit-overflow-scrolling:auto}</style>
+    <style>.cat-btn{touch-action:manipulation;-webkit-touch-callout:none;cursor:pointer}.categories{-webkit-overflow-scrolling:auto}.cat-btn:active{transform:scale(0.95)!important}</style>
   </head>
   <body>
     <div id="root"></div>
@@ -44,8 +44,9 @@
       })();
 
       (function() {
-        var _page = parseInt(new URLSearchParams(location.search).get("_page")) || 0;
-        var _cat = new URLSearchParams(location.search).get("category") || "";
+        var _page = 0;
+        var _total = 500;
+        var _cat = "";
 
         var _origFetch = window.fetch;
         window.fetch = function(url, opts) {
@@ -60,23 +61,18 @@
           }
           return _origFetch.call(this, url, opts).then(function(res) {
             if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
-              var origJson = res.json.bind(res);
-              res.json = function() {
-                return origJson().then(function(data) {
-                  window._venuesTotal = data.total;
-                  return data.venues;
-                });
-              };
+              var h = res.headers.get("X-Total-Count");
+              if (h) _total = parseInt(h);
             }
             return res;
           });
         };
+        _page = parseInt(new URLSearchParams(location.search).get("_page")) || 0;
 
         function addPagination() {
           var content = document.querySelector(".content");
           if (!content) { setTimeout(addPagination, 400); return; }
-          var total = window._venuesTotal || 0;
-          var totalPages = Math.ceil(total / 50);
+          var totalPages = Math.ceil(_total / 50);
           if (totalPages <= 1) { setTimeout(addPagination, 1500); return; }
           var old = document.getElementById("pg-bar");
           if (old) old.remove();
@@ -84,15 +80,15 @@
           bar.id = "pg-bar";
           bar.style.cssText = "display:flex;justify-content:center;align-items:center;gap:12px;padding:20px 0 40px";
           var prev = document.createElement("button");
-          prev.textContent = "← Prev";
+          prev.textContent = "Prev";
           prev.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
           if (_page === 0) { prev.style.opacity = "0.4"; prev.style.cursor = "default"; }
           else prev.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page - 1)); location.href = "/?" + q.toString(); };
           var info = document.createElement("span");
-          info.textContent = _page + 1 + " / " + totalPages;
+          info.textContent = (_page + 1) + "/" + totalPages;
           info.style.cssText = "font-size:0.85rem;color:#888";
           var next = document.createElement("button");
-          next.textContent = "Next →";
+          next.textContent = "Next";
           next.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
           if (_page >= totalPages - 1) { next.style.opacity = "0.4"; next.style.cursor = "default"; }
           else next.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page + 1)); location.href = "/?" + q.toString(); };
