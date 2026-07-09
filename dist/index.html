@@ -85,6 +85,19 @@
           }
         };
       })();
+
+      document.addEventListener("click", function(e) {
+        var btn = e.target.closest(".cat-btn");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var cat = btn.textContent.trim() === "All" ? "" : btn.textContent.trim();
+        var q = new URLSearchParams(location.search);
+        q.delete("_page");
+        if (cat) q.set("category", cat); else q.delete("category");
+        var qs = q.toString();
+        location.href = qs ? "/?" + qs : "/";
+      }, true);
     </script>
   </body>
 </html>
