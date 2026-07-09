@@ -18,22 +18,29 @@
       📍 Use my location to find nearby venues
     </div>
     <script>
-      let _locOk, _locErr;
-      const _orig = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
-      navigator.geolocation.getCurrentPosition = function(ok, err, opts) {
-        _locOk = ok; _locErr = err;
-        const saved = sessionStorage.getItem("_loc");
-        if (saved) { try { ok(JSON.parse(saved)); return } catch {} }
-        document.getElementById("loc-banner").style.display = "block";
-      };
-      async function getLoc() {
-        document.getElementById("loc-banner").style.display = "none";
-        try {
-          const pos = await new Promise((ok, er) => _orig(ok, er, { enableHighAccuracy: true, timeout: 10000 }));
-          sessionStorage.setItem("_loc", JSON.stringify(pos));
-          _locOk && _locOk(pos);
-        } catch { _locErr && _locErr() }
-      }
+      (function() {
+        var p = new URLSearchParams(location.search);
+        var cached = p.get("_loc");
+        var _locOk, _locErr;
+        var _orig = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+        navigator.geolocation.getCurrentPosition = function(ok, err) {
+          _locOk = ok; _locErr = err;
+          if (cached) {
+            var parts = cached.split(",").map(Number);
+            ok({ coords: { latitude: parts[0], longitude: parts[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+            history.replaceState(null, "", location.pathname);
+            return;
+          }
+          document.getElementById("loc-banner").style.display = "block";
+        };
+        window.getLoc = function() {
+          document.getElementById("loc-banner").style.display = "none";
+          _orig(function(pos) {
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
+            location.href = "/?_loc=" + lat + "," + lng;
+          }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
+        };
+      })();
     </script>
   </body>
 </html>
