@@ -44,24 +44,28 @@
 
       (function() {
         var _page = parseInt(new URLSearchParams(location.search).get("_page")) || 0;
+        var _cat = new URLSearchParams(location.search).get("category") || "";
+
         var _origFetch = window.fetch;
         window.fetch = function(url, opts) {
           if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
             var base = url.split("?")[0];
             var qp = new URLSearchParams(url.split("?")[1] || "");
+            var newCat = qp.get("category") || "";
+            if (newCat !== _cat) { _cat = newCat; _page = 0; }
             qp.set("limit", "50");
             qp.set("offset", String(_page * 50));
             url = base + "?" + qp.toString();
           }
           return _origFetch.call(this, url, opts).then(function(res) {
             if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
-              return res.clone().text().then(function(body) {
-                var data = JSON.parse(body);
-                window._venuesTotal = data.total;
-                return new Response(JSON.stringify(data.venues), {
-                  status: res.status, statusText: res.statusText, headers: res.headers
+              var origJson = res.json.bind(res);
+              res.json = function() {
+                return origJson().then(function(data) {
+                  window._venuesTotal = data.total;
+                  return data.venues;
                 });
-              });
+              };
             }
             return res;
           });
