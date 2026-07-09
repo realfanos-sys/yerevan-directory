@@ -59,6 +59,8 @@ db.run(`
 const result = db.exec("SELECT COUNT(*) AS count FROM venues");
 const count = result.length > 0 ? result[0].values[0][0] : 0;
 
+db.run("UPDATE venues SET active = 1");
+
 if (count === 0) {
   const TARGETS = { Restaurant: 150, Café: 80, Theatre: 40, "Fast Food": 50, Bar: 50, Museum: 40, Park: 40, Shopping: 50 };
 
