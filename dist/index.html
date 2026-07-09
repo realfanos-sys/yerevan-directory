@@ -15,90 +15,41 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()">
-      📍 Use my location to find nearby venues
+    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer">
+      Use my location to find nearby venues
     </div>
     <script>
-      (function() {
-        var p = new URLSearchParams(location.search);
-        var cached = p.get("_loc");
-        var _locOk, _locErr;
-        var _orig = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
-        navigator.geolocation.getCurrentPosition = function(ok, err) {
-          _locOk = ok; _locErr = err;
-          if (cached) {
-            var parts = cached.split(",").map(Number);
-            ok({ coords: { latitude: parts[0], longitude: parts[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
-            history.replaceState(null, "", location.pathname);
-            return;
-          }
-          document.getElementById("loc-banner").style.display = "block";
-        };
-        window.getLoc = function() {
-          document.getElementById("loc-banner").style.display = "none";
-          _orig(function(pos) {
-            var lat = pos.coords.latitude, lng = pos.coords.longitude;
-            location.href = "/?_loc=" + lat + "," + lng;
-          }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
-        };
-      })();
-
-      (function() {
-        var _page = 0;
-        var _total = 500;
-        var _cat = "";
-
-        var _origFetch = window.fetch;
-        window.fetch = function(url, opts) {
-          if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
-            var base = url.split("?")[0];
-            var qp = new URLSearchParams(url.split("?")[1] || "");
-            var newCat = qp.get("category") || "";
-            if (newCat !== _cat) { _cat = newCat; _page = 0; }
-            qp.set("limit", "50");
-            qp.set("offset", String(_page * 50));
-            url = base + "?" + qp.toString();
-          }
-          return _origFetch.call(this, url, opts).then(function(res) {
-            if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
-              var h = res.headers.get("X-Total-Count");
-              if (h) _total = parseInt(h);
-            }
-            return res;
-          });
-        };
-        _page = parseInt(new URLSearchParams(location.search).get("_page")) || 0;
-
-        function addPagination() {
-          var content = document.querySelector(".content");
-          if (!content) { setTimeout(addPagination, 400); return; }
-          var totalPages = Math.ceil(_total / 50);
-          if (totalPages <= 1) { setTimeout(addPagination, 1500); return; }
-          var old = document.getElementById("pg-bar");
-          if (old) old.remove();
-          var bar = document.createElement("div");
-          bar.id = "pg-bar";
-          bar.style.cssText = "display:flex;justify-content:center;align-items:center;gap:12px;padding:20px 0 40px";
-          var prev = document.createElement("button");
-          prev.textContent = "Prev";
-          prev.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
-          if (_page === 0) { prev.style.opacity = "0.4"; prev.style.cursor = "default"; }
-          else prev.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page - 1)); location.href = "/?" + q.toString(); };
-          var info = document.createElement("span");
-          info.textContent = (_page + 1) + "/" + totalPages;
-          info.style.cssText = "font-size:0.85rem;color:#888";
-          var next = document.createElement("button");
-          next.textContent = "Next";
-          next.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
-          if (_page >= totalPages - 1) { next.style.opacity = "0.4"; next.style.cursor = "default"; }
-          else next.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page + 1)); location.href = "/?" + q.toString(); };
-          bar.appendChild(prev); bar.appendChild(info); bar.appendChild(next);
-          content.appendChild(bar);
-          setTimeout(addPagination, 2000);
+      var _locCached = new URLSearchParams(location.search).get("_loc");
+      var _locGet, _locErr;
+      var _origLoc = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+      navigator.geolocation.getCurrentPosition = function(ok, err) {
+        _locGet = ok; _locErr = err;
+        if (_locCached) {
+          var p = _locCached.split(",").map(Number);
+          ok({ coords: { latitude: p[0], longitude: p[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+          history.replaceState(null, "", location.pathname.replace(location.search, ""));
+          return;
         }
-        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addPagination);
-        else addPagination();
-      })();
+        document.getElementById("loc-banner").style.display = "block";
+      };
+      document.getElementById("loc-banner").onclick = function() {
+        this.style.display = "none";
+        _origLoc(function(pos) {
+          location.href = "/?_loc=" + pos.coords.latitude + "," + pos.coords.longitude;
+        }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
+      };
+
+      // Fix category taps on mobile: remove href so browser cant navigate on touchstart
+      new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+          m.addedNodes.forEach(function(n) {
+            if (n.nodeType === 1) {
+              if (n.matches && n.matches(".cat-btn")) n.removeAttribute("href");
+              if (n.querySelectorAll) n.querySelectorAll(".cat-btn").forEach(function(e) { e.removeAttribute("href"); });
+            }
+          });
+        });
+      }).observe(document.body, { childList: true, subtree: true });
     </script>
   </body>
 </html>
