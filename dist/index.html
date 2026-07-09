@@ -14,5 +14,26 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()">
+      📍 Use my location to find nearby venues
+    </div>
+    <script>
+      let _locOk, _locErr;
+      const _orig = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+      navigator.geolocation.getCurrentPosition = function(ok, err, opts) {
+        _locOk = ok; _locErr = err;
+        const saved = sessionStorage.getItem("_loc");
+        if (saved) { try { ok(JSON.parse(saved)); return } catch {} }
+        document.getElementById("loc-banner").style.display = "block";
+      };
+      async function getLoc() {
+        document.getElementById("loc-banner").style.display = "none";
+        try {
+          const pos = await new Promise((ok, er) => _orig(ok, er, { enableHighAccuracy: true, timeout: 10000 }));
+          sessionStorage.setItem("_loc", JSON.stringify(pos));
+          _locOk && _locOk(pos);
+        } catch { _locErr && _locErr() }
+      }
+    </script>
   </body>
 </html>
