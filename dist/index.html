@@ -15,52 +15,49 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="loc-banner" role="button" tabindex="0" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()" ontouchend="getLoc();event.preventDefault()">
-      Use my location to find nearby venues
-    </div>
+    <button id="loc-banner" type="button" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer;border:none;width:100%" onclick="getLoc()">
+      <span id="loc-banner-text">Use my location to find nearby venues</span>
+    </button>
     <script>
-      var _nativeGetCurrentPosition = navigator.geolocation.getCurrentPosition;
-      var _nativeGeo = navigator.geolocation;
+      var g = navigator.geolocation;
+      var _realGetCurrentPosition = g.getCurrentPosition.bind(g);
 
       (function(){
-        var _loc = new URLSearchParams(location.search).get("_loc");
         var _err;
+        var ls = window.localStorage;
+        var cached = ls ? ls.getItem("_loc") : null;
+        var coords = null;
+        if (cached) try { coords = JSON.parse(cached); } catch(e) {}
 
-        if (!_loc) {
+        if (!coords) {
           var b = document.getElementById("loc-banner");
           if (b) b.style.display = "block";
         }
 
-        navigator.geolocation.getCurrentPosition = function(ok, err) {
+        g.getCurrentPosition = function(ok, err) {
           _err = err;
-          if (_loc) {
-            var p = _loc.split(",").map(Number);
-            ok({ coords: { latitude: p[0], longitude: p[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+          if (coords) {
+            ok({ coords: { latitude: coords.lat, longitude: coords.lng, accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
           }
         };
 
         window.getLoc = function() {
           var b = document.getElementById("loc-banner");
-          if (b) b.style.display = "none";
-          _nativeGetCurrentPosition.call(_nativeGeo, function(pos) {
-            location.href = "/?_loc=" + pos.coords.latitude + "," + pos.coords.longitude;
-          }, function() { if (_err) _err(); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+          var t = document.getElementById("loc-banner-text");
+          if (t) t.textContent = "Getting location...";
+          _realGetCurrentPosition(function(pos) {
+            if (ls) ls.setItem("_loc", JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }));
+            location.reload();
+          }, function() {
+            if (t) t.textContent = "Location failed — tap to retry";
+            if (!b) return;
+            b.style.display = "block";
+            setTimeout(function() {
+              if (t) t.textContent = "Use my location to find nearby venues";
+            }, 4000);
+          }, { enableHighAccuracy: true, timeout: 15000 });
         };
       })();
-
-      document.addEventListener("click", function(e) {
-        var btn = e.target.closest(".cat-btn");
-        if (!btn) return;
-        e.preventDefault();
-        var cat = btn.textContent.trim() === "All" ? "" : btn.textContent.trim();
-        var q = new URLSearchParams(location.search);
-        var loc = q.get("_loc");
-        q.delete("_page");
-        if (cat) q.set("category", cat); else q.delete("category");
-        if (loc) q.set("_loc", loc);
-        var qs = q.toString();
-        location.href = qs ? "/?" + qs : "/";
-      }, true);
     </script>
   </body>
 </html>
