@@ -169,15 +169,10 @@ if (count === 0) {
         `+374 10 ${String(100000 + globalIdx).slice(1)}`,
         `${descList[i % descList.length]} ${descBase} in Yerevan`,
         images[i % images.length],
-        0, coords[ci % coords.length][0], coords[ci % coords.length][1],
+        1, coords[ci % coords.length][0], coords[ci % coords.length][1],
       ]);
       ci++;
     }
-  }
-
-  const activeFlat = [14, 152, 270, 322, 451];
-  for (const idx of activeFlat) {
-    if (idx < venues.length) venues[idx][6] = 1;
   }
 
   const stmt = db.prepare(
