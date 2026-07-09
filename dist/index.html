@@ -15,31 +15,36 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()">
+    <div id="loc-banner" role="button" tabindex="0" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()" ontouchend="getLoc();event.preventDefault()">
       Use my location to find nearby venues
     </div>
     <script>
+      var _nativeGetCurrentPosition = navigator.geolocation.getCurrentPosition;
+      var _nativeGeo = navigator.geolocation;
+
       (function(){
         var _loc = new URLSearchParams(location.search).get("_loc");
-        var _ok, _err;
-        var _realGetCurrentPosition = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+        var _err;
+
+        if (!_loc) {
+          var b = document.getElementById("loc-banner");
+          if (b) b.style.display = "block";
+        }
 
         navigator.geolocation.getCurrentPosition = function(ok, err) {
-          _ok = ok; _err = err;
+          _err = err;
           if (_loc) {
             var p = _loc.split(",").map(Number);
             ok({ coords: { latitude: p[0], longitude: p[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
-            return;
           }
-          document.getElementById("loc-banner").style.display = "block";
         };
 
         window.getLoc = function() {
           var b = document.getElementById("loc-banner");
           if (b) b.style.display = "none";
-          _realGetCurrentPosition(function(pos) {
+          _nativeGetCurrentPosition.call(_nativeGeo, function(pos) {
             location.href = "/?_loc=" + pos.coords.latitude + "," + pos.coords.longitude;
-          }, function() { _err && _err(); }, { enableHighAccuracy: true, timeout: 10000 });
+          }, function() { if (_err) _err(); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
         };
       })();
 
@@ -47,7 +52,6 @@
         var btn = e.target.closest(".cat-btn");
         if (!btn) return;
         e.preventDefault();
-        e.stopPropagation();
         var cat = btn.textContent.trim() === "All" ? "" : btn.textContent.trim();
         var q = new URLSearchParams(location.search);
         var loc = q.get("_loc");
