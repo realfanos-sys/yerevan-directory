@@ -15,15 +15,15 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer">
+    <div id="loc-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:#c0392b;color:#fff;text-align:center;padding:14px;font-size:1rem;font-weight:600;cursor:pointer" onclick="getLoc()">
       Use my location to find nearby venues
     </div>
     <script>
       var _locCached = new URLSearchParams(location.search).get("_loc");
-      var _locGet, _locErr;
+      var _locErr;
       var _origLoc = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
       navigator.geolocation.getCurrentPosition = function(ok, err) {
-        _locGet = ok; _locErr = err;
+        _locErr = err;
         if (_locCached) {
           var p = _locCached.split(",").map(Number);
           ok({ coords: { latitude: p[0], longitude: p[1], accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
@@ -31,8 +31,8 @@
         }
         document.getElementById("loc-banner").style.display = "block";
       };
-      document.getElementById("loc-banner").onclick = function() {
-        this.style.display = "none";
+      window.getLoc = function() {
+        document.getElementById("loc-banner").style.display = "none";
         _origLoc(function(pos) {
           location.href = "/?_loc=" + pos.coords.latitude + "," + pos.coords.longitude;
         }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
