@@ -188,19 +188,38 @@ if (count === 0) {
 }
 
 app.get("/api/venues", (req, res) => {
-  const { search, category } = req.query;
+  const { search, category, limit = "50", offset = "0" } = req.query;
+  const limitVal = Math.min(parseInt(limit) || 50, 500);
+  const offsetVal = parseInt(offset) || 0;
+
+  let countSql = "SELECT COUNT(*) AS total FROM venues WHERE 1=1";
   let sql = "SELECT * FROM venues WHERE 1=1";
+  const countParams = [];
   const params = [];
 
   if (search) {
-    sql += " AND (name LIKE ? OR description LIKE ? OR address LIKE ?)";
+    const clause = " AND (name LIKE ? OR description LIKE ? OR address LIKE ?)";
+    sql += clause;
+    countSql += clause;
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
   if (category) {
-    sql += " AND category = ?";
+    const clause = " AND category = ?";
+    sql += clause;
+    countSql += clause;
     params.push(category);
+    countParams.push(category);
   }
   sql += " ORDER BY active DESC, name ASC";
+  sql += ` LIMIT ? OFFSET ?`;
+  params.push(limitVal, offsetVal);
+
+  const countStmt = db.prepare(countSql);
+  countStmt.bind(countParams);
+  let total = 0;
+  if (countStmt.step()) total = countStmt.getAsObject().total;
+  countStmt.free();
 
   const stmt = db.prepare(sql);
   stmt.bind(params);
@@ -209,7 +228,7 @@ app.get("/api/venues", (req, res) => {
     rows.push(stmt.getAsObject());
   }
   stmt.free();
-  res.json(rows);
+  res.json({ venues: rows, total });
 });
 
 app.get("/api/venues/nearby", (req, res) => {

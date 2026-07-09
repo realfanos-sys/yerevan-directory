@@ -41,6 +41,63 @@
           }, function() { _locErr && _locErr(); }, { enableHighAccuracy: true, timeout: 10000 });
         };
       })();
+
+      (function() {
+        var _page = parseInt(new URLSearchParams(location.search).get("_page")) || 0;
+        var _origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+          if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
+            var base = url.split("?")[0];
+            var qp = new URLSearchParams(url.split("?")[1] || "");
+            qp.set("limit", "50");
+            qp.set("offset", String(_page * 50));
+            url = base + "?" + qp.toString();
+          }
+          return _origFetch.call(this, url, opts).then(function(res) {
+            if (typeof url === "string" && url.indexOf("/api/venues") === 0 && url.indexOf("/nearby") === -1) {
+              return res.clone().text().then(function(body) {
+                var data = JSON.parse(body);
+                window._venuesTotal = data.total;
+                return new Response(JSON.stringify(data.venues), {
+                  status: res.status, statusText: res.statusText, headers: res.headers
+                });
+              });
+            }
+            return res;
+          });
+        };
+
+        function addPagination() {
+          var content = document.querySelector(".content");
+          if (!content) { setTimeout(addPagination, 400); return; }
+          var total = window._venuesTotal || 0;
+          var totalPages = Math.ceil(total / 50);
+          if (totalPages <= 1) { setTimeout(addPagination, 1500); return; }
+          var old = document.getElementById("pg-bar");
+          if (old) old.remove();
+          var bar = document.createElement("div");
+          bar.id = "pg-bar";
+          bar.style.cssText = "display:flex;justify-content:center;align-items:center;gap:12px;padding:20px 0 40px";
+          var prev = document.createElement("button");
+          prev.textContent = "← Prev";
+          prev.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
+          if (_page === 0) { prev.style.opacity = "0.4"; prev.style.cursor = "default"; }
+          else prev.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page - 1)); location.href = "/?" + q.toString(); };
+          var info = document.createElement("span");
+          info.textContent = _page + 1 + " / " + totalPages;
+          info.style.cssText = "font-size:0.85rem;color:#888";
+          var next = document.createElement("button");
+          next.textContent = "Next →";
+          next.style.cssText = "padding:8px 20px;border:none;border-radius:20px;background:#c0392b;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer";
+          if (_page >= totalPages - 1) { next.style.opacity = "0.4"; next.style.cursor = "default"; }
+          else next.onclick = function() { var q = new URLSearchParams(location.search); q.set("_page", String(_page + 1)); location.href = "/?" + q.toString(); };
+          bar.appendChild(prev); bar.appendChild(info); bar.appendChild(next);
+          content.appendChild(bar);
+          setTimeout(addPagination, 2000);
+        }
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addPagination);
+        else addPagination();
+      })();
     </script>
   </body>
 </html>
