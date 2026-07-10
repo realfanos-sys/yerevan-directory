@@ -247,7 +247,8 @@ app.get("/api/venues/nearby", (req, res) => {
   while (stmt.step()) {
     const v = stmt.getAsObject();
     if (v.lat != null && v.lng != null) {
-      v.distance = Math.round(haversineKm(userLat, userLng, v.lat, v.lng) * 100) / 100;
+      const rawDist = haversineKm(userLat, userLng, v.lat, v.lng);
+v.distance = Math.round(rawDist * (rawDist > 50 ? 10000 : 100)) / (rawDist > 50 ? 10000 : 100);
       rows.push(v);
     }
   }
